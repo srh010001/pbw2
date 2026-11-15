@@ -48,14 +48,6 @@ Jangan membuka `index.html` dengan double-click (`file://`), karena browser dapa
 - **Pembaruan tracking:** status dapat dipilih sebagai `Dalam Proses`, `Dalam Perjalanan`, `Terkirim`, atau `Kendala` saat menambahkan keterangan progress. Perubahan waktu dan status ditampilkan di dashboard.
 - **Pengurangan stok:** ketika DO berhasil dibuat, stok bahan ajar berkurang sesuai jumlah item yang dipesan. Paket mengurangi satu eksemplar untuk setiap bahan ajar dalam isi paket.
 
-## Penyesuaian terhadap Tugas Praktik 2
-
-- Identitas visual memakai gaya SITTA-UT sebelumnya: font DM Sans, aksen biru tua dan oranye, serta nama pembuat Sarah Hanifah.
-- Nama field stok tetap menggunakan `kode`, `judul`, `kategori`, `upbjj`, `lokasiRak`, `harga`, `qty`, `safety`, dan `catatanHTML`.
-- Daftar UPBJJ, kategori, ekspedisi, paket, stok, dan tracking diambil dari JSON yang dilampirkan.
-- Struktur Vue 3 sebelumnya (`createApp`) diubah ke Vue 2.7 karena instruksi Tugas Praktik 3 memberi contoh registrasi `Vue.component('nama-komponen', ...)`.
-- Navigasi halaman berada pada root Vue: dashboard, stok, tracking, dan pemesanan. Struktur komponen, service API, serta pemuatan template tetap dipertahankan dan diperluas tanpa mengganti arsitektur utama.
-
 ## Waktu dan nomor DO
 
 - Semua tanggal dan jam otomatis menggunakan zona waktu `Asia/Jakarta` (WIB).
