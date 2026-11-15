@@ -1,0 +1,7 @@
+<span class="status-wrap" @mouseenter="hovered = true" @mouseleave="hovered = false">
+    <span class="status-pill" :class="statusClass">
+        <i :class="statusIcon"></i>{{ statusText }}
+    </span>
+    <!-- Catatan HTML dari JSON diperlihatkan saat pointer diarahkan ke Status. -->
+    <span v-show="hovered" class="status-tooltip" v-html="safeCatatan"></span>
+</span>

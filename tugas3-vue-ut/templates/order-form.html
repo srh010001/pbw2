@@ -1,0 +1,84 @@
+<section class="section-card form-card">
+    <div class="form-card-header">
+        <h2 class="section-title"><i class="fa-solid fa-cart-plus"></i>Formulir Delivery Order Baru</h2>
+        <p class="section-subtitle">Buat pesanan paket atau pilih beberapa bahan ajar satuan. Nomor DO dan total harga dihitung otomatis.</p>
+    </div>
+    <div class="form-card-body">
+        <form @submit.prevent="submitOrder" @keydown.enter="submitWithEnter" class="space-y-5">
+            <div class="info-strip flex flex-wrap items-center justify-between gap-2">
+                <span><strong>Nomor DO otomatis:</strong> {{ nextNomorDO }}</span>
+                <span><i class="fa-regular fa-clock mr-1"></i>{{ jamWIB }} WIB</span>
+            </div>
+
+            <div class="form-grid three">
+                <div class="field"><label for="do-nim">NIM</label><input id="do-nim" class="form-control" v-model.trim="newDO.nim" inputmode="numeric" minlength="5" maxlength="20" placeholder="Masukkan NIM" required></div>
+                <div class="field"><label for="do-nama">Nama Penerima</label><input id="do-nama" class="form-control" v-model.trim="newDO.nama" placeholder="Nama lengkap" required></div>
+                <div class="field"><label for="do-ekspedisi">Ekspedisi</label><select id="do-ekspedisi" class="form-control" v-model="newDO.ekspedisi" required><option value="">Pilih ekspedisi</option><option v-for="ekspedisi in pengirimanList" :key="ekspedisi.kode" :value="ekspedisi.kode">{{ labelEkspedisi(ekspedisi) }}</option></select></div>
+            </div>
+
+            <div class="field">
+                <label for="do-alamat">Alamat Pengiriman Lengkap</label>
+                <textarea id="do-alamat" class="form-control" v-model.trim="newDO.alamatPengiriman" rows="3" maxlength="500" placeholder="Nama jalan, nomor rumah/gedung, RT/RW, kelurahan, kecamatan, kota/kabupaten, provinsi, dan kode pos" required></textarea>
+                <p class="hint">Alamat ini akan tersimpan pada detail DO dan dapat dilihat pada halaman tracking.</p>
+            </div>
+
+            <div class="order-type-switch">
+                <span class="field-label">Jenis pemesanan</span>
+                <div class="order-type-options">
+                    <button type="button" :class="['order-type-option', { active: newDO.jenisPesanan === 'paket' }]" @click="setJenisPesanan('paket')"><i class="fa-solid fa-box"></i> Paket bahan ajar</button>
+                    <button type="button" :class="['order-type-option', { active: newDO.jenisPesanan === 'satuan' }]" @click="setJenisPesanan('satuan')"><i class="fa-solid fa-list-check"></i> Bahan ajar satuan</button>
+                </div>
+            </div>
+
+            <div v-if="newDO.jenisPesanan === 'paket'" class="form-grid three">
+                <div class="field">
+                    <label for="do-paket">Pilih Paket</label>
+                    <select id="do-paket" class="form-control" v-model="newDO.paket" required>
+                        <option value="">Pilih paket bahan ajar</option>
+                        <option v-for="paket in paketList" :key="paket.kode" :value="paket.kode">{{ paket.kode }} - {{ paket.nama }}</option>
+                    </select>
+                </div>
+                <div class="field"><label>Tanggal Kirim</label><input class="form-control" type="date" v-model="newDO.tanggalKirim" required><p class="hint">Tanggal mengikuti kalender WIB.</p></div>
+                <div class="field"><label>Total Harga Paket</label><div class="form-control price-field">{{ formatRupiah(totalHarga) }}</div><p class="hint">Harga mengikuti data paket pada JSON.</p></div>
+            </div>
+
+            <div v-if="newDO.jenisPesanan === 'paket' && selectedPaket" class="package-detail">
+                <div class="flex flex-wrap justify-between gap-2 items-center"><strong class="text-sm text-blue-900">{{ selectedPaket.kode }} — {{ selectedPaket.nama }}</strong><span class="text-xs font-extrabold text-orange-600">{{ formatRupiah(selectedPaket.harga) }}</span></div>
+                <p class="hint">Isi paket (1 eksemplar setiap bahan ajar):</p>
+                <ul><li v-for="bahan in isiPaketTerpilih" :key="bahan.kode"><strong>{{ bahan.kode }}</strong> — {{ bahan.judul }} <span class="table-sub">(stok: {{ bahan.qty }})</span></li><li v-if="isiPaketTerpilih.length === 0">Detail bahan ajar paket belum tersedia pada data stok.</li></ul>
+            </div>
+            <div v-else-if="newDO.jenisPesanan === 'paket'" class="info-strip">Pilih paket untuk melihat isi paket dan total harganya.</div>
+
+            <div v-if="newDO.jenisPesanan === 'satuan'" class="single-order-panel">
+                <div class="single-order-heading">
+                    <div><strong>Daftar bahan ajar yang dipesan</strong><p class="hint">Tambahkan lebih dari satu bahan ajar dan tentukan jumlah setiap item.</p></div>
+                    <button type="button" class="btn btn-navy btn-small" @click="addItemLine"><i class="fa-solid fa-plus"></i>Tambah bahan ajar</button>
+                </div>
+                <div v-if="newDO.items.length" class="single-order-list">
+                    <div v-for="(line, index) in newDO.items" :key="index" class="single-order-row">
+                        <div class="field material-select-field">
+                            <label :for="'do-item-' + index">Bahan Ajar {{ index + 1 }}</label>
+                            <select :id="'do-item-' + index" class="form-control" v-model="line.kode" required>
+                                <option value="">Pilih bahan ajar</option>
+                                <option v-for="bahan in stokList" :key="bahan.kode" :value="bahan.kode" :disabled="Number(bahan.qty) <= 0 || isKodeDipilih(bahan.kode, index)">{{ bahan.kode }} — {{ bahan.judul }} (stok {{ bahan.qty }})</option>
+                            </select>
+                        </div>
+                        <div class="field quantity-field"><label :for="'do-qty-' + index">Jumlah (eksemplar)</label><input :id="'do-qty-' + index" class="form-control" type="number" min="1" :max="stockQuantity(line.kode)" step="1" v-model.number="line.qty" required></div>
+                        <div class="field subtotal-field"><label>Subtotal</label><div class="form-control price-field">{{ formatRupiah(selectedItemRows[index] ? selectedItemRows[index].subtotal : 0) }}</div></div>
+                        <button type="button" class="btn btn-danger btn-small remove-line-btn" @click="removeItemLine(index)" :disabled="newDO.items.length === 1" :aria-label="'Hapus bahan ajar ' + (index + 1)"><i class="fa-solid fa-trash"></i></button>
+                        <p v-if="line.kode && selectedItemRows[index] && selectedItemRows[index].bahan" class="item-stock-hint">Stok tersedia: {{ selectedItemRows[index].bahan.qty }} eksemplar · Harga satuan: {{ formatRupiah(selectedItemRows[index].bahan.harga) }}</p>
+                    </div>
+                </div>
+                <div v-else class="empty-inline">Belum ada bahan ajar. Tekan “Tambah bahan ajar” untuk memilih item.</div>
+                <div class="single-order-total"><span>Total pesanan satuan</span><strong>{{ formatRupiah(totalHarga) }}</strong></div>
+                <div class="field date-field"><label>Tanggal Kirim</label><input class="form-control" type="date" v-model="newDO.tanggalKirim" required></div>
+            </div>
+
+            <p v-if="formError" class="error-text">{{ formError }}</p>
+            <div class="action-row justify-end">
+                <button type="button" class="btn btn-light" @click="resetForm"><i class="fa-solid fa-rotate-left"></i>Reset Form</button>
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-file-circle-plus"></i>Simpan Delivery Order</button>
+            </div>
+        </form>
+    </div>
+</section>

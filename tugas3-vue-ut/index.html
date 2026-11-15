@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SITTA-UT - Sistem Informasi Pengelolaan Bahan Ajar Universitas Terbuka">
+    <title>SITTA-UT | Pemesanan Bahan Ajar</title>
+
+    <!-- Tampilan tetap mengikuti identitas proyek sebelumnya: DM Sans, hitam, biru, dan oranye. -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+
+    <!-- Vue 2 dipakai karena instruksi tugas memberi contoh registrasi Vue.component(). -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.7.16/dist/vue.js"></script>
+</head>
+<body>
+    <div id="boot-error" class="boot-error" role="alert" aria-live="polite"></div>
+
+    <div id="app" v-cloak>
+        <header class="topbar">
+            <div class="topbar-inner">
+                <div class="brand">
+                    <div class="brand-logo">
+                        <img src="assets/img/logo_ut.svg" onerror="this.style.display='none'" alt="Logo Universitas Terbuka">
+                    </div>
+                    <div>
+                        <div class="brand-name">SITTA-UT</div>
+                        <div class="brand-caption">Sistem Bahan Ajar Universitas Terbuka</div>
+                    </div>
+                </div>
+
+                <nav class="main-nav" aria-label="Navigasi utama">
+                    <button type="button" :class="['nav-tab', { active: tab === 'dashboard' }]" @click="tab = 'dashboard'">
+                        <i class="fa-solid fa-chart-pie"></i><span>Dashboard</span>
+                    </button>
+                    <button type="button" :class="['nav-tab', { active: tab === 'stok' }]" @click="tab = 'stok'">
+                        <i class="fa-solid fa-boxes-stacked"></i><span>Stok Bahan Ajar</span>
+                    </button>
+                    <button type="button" :class="['nav-tab', { active: tab === 'tracking' }]" @click="tab = 'tracking'">
+                        <i class="fa-solid fa-truck-fast"></i><span>Tracking DO</span>
+                    </button>
+                    <button type="button" :class="['nav-tab', { active: tab === 'order' }]" @click="tab = 'order'">
+                        <i class="fa-solid fa-cart-shopping"></i><span>Pemesanan</span>
+                    </button>
+                </nav>
+
+                <div class="user-chip">
+                    <span class="user-avatar"><i class="fa-solid fa-user"></i></span>
+                    <span>{{ namaPengguna }}</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="page-shell">
+            <section class="welcome-panel">
+                <div>
+                    <p class="eyebrow">UNIVERSITAS TERBUKA</p>
+                    <h1>{{ salam }}, {{ namaPengguna }} 👋</h1>
+                    <p class="welcome-description">Kelola persediaan bahan ajar dan pantau pengiriman Delivery Order dalam satu aplikasi.</p>
+                </div>
+                <div class="clock-panel">
+                    <span class="clock-label"><i class="fa-regular fa-clock"></i> Waktu Indonesia Barat (WIB)</span>
+                    <strong>{{ jamWIB }}</strong>
+                    <span>{{ tanggalWIB }}</span>
+                </div>
+            </section>
+
+            <div v-if="isLoading" class="loading-card">
+                <i class="fa-solid fa-spinner fa-spin"></i>
+                <span>Memuat data bahan ajar...</span>
+            </div>
+
+            <template v-else>
+                <sitta-dashboard
+                    v-if="tab === 'dashboard'"
+                    :stok="stok"
+                    :tracking-list="trackingList"
+                    @go-stock="tab = 'stok'"
+                    @go-tracking="tab = 'tracking'"
+                    @go-order="tab = 'order'">
+                </sitta-dashboard>
+
+                <ba-stock-table
+                    v-if="tab === 'stok'"
+                    :stok="stok"
+                    :upbjj-list="upbjjList"
+                    :kategori-list="kategoriList"
+                    @create-item="tambahStok"
+                    @update-item="ubahStok"
+                    @delete-item="hapusStok">
+                </ba-stock-table>
+
+                <do-tracking
+                    v-else-if="tab === 'tracking'"
+                    :tracking-list="trackingList"
+                    @add-progress="tambahProgress">
+                </do-tracking>
+
+                <order-form
+                    v-else-if="tab === 'order'"
+                    :tracking-list="trackingList"
+                    :pengiriman-list="pengirimanList"
+                    :paket-list="paketList"
+                    :stok-list="stok"
+                    @create-order="buatOrder">
+                </order-form>
+            </template>
+
+            <footer class="app-footer">
+                <span>Dibuat oleh: Sarah Hanifah | NIM: 053132687</span>
+                <span>Data contoh bersumber dari <code>data/dataBahanAjar.json</code></span>
+            </footer>
+        </main>
+    </div>
+
+    <!-- app.js memuat JSON dan file template terlebih dahulu, kemudian mendaftarkan komponen Vue. -->
+    <script src="js/services/api.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

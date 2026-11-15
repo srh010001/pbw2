@@ -1,0 +1,11 @@
+<div v-if="show" class="modal-backdrop" @click.self="$emit('cancel')" role="dialog" aria-modal="true">
+    <div class="modal-box">
+        <div class="mb-3 text-orange-500 text-2xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <h3>{{ title }}</h3>
+        <p>{{ message }}</p>
+        <div class="action-row justify-end">
+            <button type="button" class="btn btn-light" @click="$emit('cancel')">Batal</button>
+            <button type="button" class="btn btn-danger" @click="$emit('confirm')">Ya, hapus</button>
+        </div>
+    </div>
+</div>

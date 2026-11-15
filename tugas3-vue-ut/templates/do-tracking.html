@@ -1,0 +1,83 @@
+<section class="space-y-5">
+    <div class="section-card card-pad">
+        <h2 class="section-title"><i class="fa-solid fa-magnifying-glass-location"></i>Tracking Delivery Order</h2>
+        <p class="section-subtitle">Cari pengiriman menggunakan Nomor DO atau NIM, lalu perbarui status dan riwayat perjalanannya.</p>
+        <div class="mt-5 flex flex-col sm:flex-row gap-3">
+            <input class="form-control flex-1" type="search" v-model.trim="searchQuery" @keyup.enter="search" @keyup.esc="clearSearch" placeholder="Contoh: DO2026-0001 atau 123456789" aria-label="Nomor DO atau NIM">
+            <div class="action-row">
+                <button type="button" class="btn btn-primary" @click="search"><i class="fa-solid fa-search"></i>Cari</button>
+                <button type="button" class="btn btn-gray" @click="clearSearch"><i class="fa-solid fa-eraser"></i>Clear (Esc)</button>
+            </div>
+        </div>
+        <p class="hint">Pencarian menerima nomor DO maupun NIM, termasuk pencarian sebagian karakter.</p>
+    </div>
+
+    <div v-if="hasSearched && foundItems.length === 0" class="section-card empty-state">
+        <i class="fa-solid fa-circle-exclamation"></i>Data pengiriman tidak ditemukan. Periksa kembali Nomor DO atau NIM.
+    </div>
+
+    <div v-if="foundItems.length">
+        <article v-for="item in foundItems" :key="item.nomorDO" class="result-card">
+            <div class="result-head">
+                <div><p class="eyebrow text-orange-600">DELIVERY ORDER</p><h3>{{ item.nomorDO }}</h3></div>
+                <span
+                    class="status-badge"
+                        :class="{
+                            'status-dalam-proses': item.status === 'Dalam Proses',
+                            'status-dalam-perjalanan': item.status === 'Dalam Perjalanan',
+                            'status-kendala': item.status === 'Kendala',
+                            'status-terkirim': item.status === 'Telah Diterima/Terkirim'
+                        }"
+                        >
+                    {{ item.status || 'Dalam Perjalanan' }}
+                </span>
+            </div>
+            <div class="result-grid">
+                <div><div class="detail-label">NIM</div><div class="detail-value">{{ item.nim }}</div></div>
+                <div><div class="detail-label">Nama Penerima</div><div class="detail-value">{{ item.nama }}</div></div>
+                <div><div class="detail-label">Ekspedisi</div><div class="detail-value">{{ item.ekspedisi }}</div></div>
+                <div><div class="detail-label">Tanggal Kirim</div><div class="detail-value">{{ formatTanggal(item.tanggalKirim) }}</div></div>
+                <div><div class="detail-label">Jenis Pesanan</div><div class="detail-value">{{ item.namaPaket || item.paket || '-' }}</div></div>
+                <div><div class="detail-label">Total Harga</div><div class="detail-value">{{ formatRupiah(item.total) }}</div></div>
+            </div>
+
+            <div v-if="item.alamatPengiriman" class="tracking-address">
+                <div class="detail-label"><i class="fa-solid fa-location-dot text-orange-500 mr-1"></i>Alamat Pengiriman</div>
+                <div class="detail-value">{{ item.alamatPengiriman }}</div>
+            </div>
+
+            <div v-if="item.detailPesanan && item.detailPesanan.length" class="tracking-items">
+                <h4 class="text-sm font-extrabold text-blue-900 mb-2"><i class="fa-solid fa-box-open text-orange-500 mr-2"></i>Rincian Bahan Ajar</h4>
+                <div class="table-wrap"><table>
+                    <thead><tr><th>Kode</th><th>Nama Bahan Ajar</th><th>Jumlah</th><th>Subtotal</th></tr></thead>
+                    <tbody><tr v-for="bahan in item.detailPesanan" :key="bahan.kode"><td>{{ bahan.kode }}</td><td>{{ bahan.judul }}</td><td>{{ bahan.qty }} {{ bahan.satuan || 'eksemplar' }}</td><td>{{ formatRupiah(bahan.subtotal) }}</td></tr></tbody>
+                </table></div>
+            </div>
+
+            <div class="border-t border-slate-100 pt-4">
+                <h4 class="text-sm font-extrabold text-blue-900"><i class="fa-solid fa-route text-orange-500 mr-2"></i>Riwayat Perjalanan</h4>
+                <div v-if="item.perjalanan && item.perjalanan.length" class="timeline">
+                    <div v-for="(proses, index) in timelineTerbaru(item.perjalanan)" :key="index" class="timeline-item">
+                        <div class="timeline-time">{{ formatWaktu(proses.waktu) }}</div>
+                        <div class="timeline-text">{{ proses.keterangan }}</div>
+                    </div>
+                </div>
+                <p v-else class="hint">Belum ada riwayat perjalanan.</p>
+            </div>
+
+            <form class="mt-4 pt-4 border-t border-slate-100" @submit.prevent="addProgress(item)">
+                <h4 class="text-xs font-extrabold text-slate-700 mb-3">Perbarui Tracking</h4>
+                <div class="tracking-update-grid">
+                    <div class="field"><label :for="'status-' + item.nomorDO">Status pengiriman</label><select :id="'status-' + item.nomorDO" class="form-control" :value="statusDraft(item)" @change="changeStatusDraft(item.nomorDO, $event.target.value)"><option v-for="status in statusOptions" :key="status" :value="status">{{ status }}</option></select></div>
+                    <div class="field tracking-progress-field"><label :for="'progress-' + item.nomorDO">Keterangan progress</label><input :id="'progress-' + item.nomorDO" class="form-control" v-model.trim="progressDrafts[item.nomorDO]" placeholder="Contoh: Paket tiba di gudang Surabaya" required></div>
+                    <button type="submit" class="btn btn-navy tracking-submit"><i class="fa-solid fa-floppy-disk"></i>Simpan Update</button>
+                </div>
+                <p class="hint">Waktu pembaruan otomatis menggunakan waktu Indonesia Barat (WIB). Status terbaru akan tampil di Dashboard.</p>
+            </form>
+        </article>
+    </div>
+
+    <div v-if="!hasSearched" class="section-card empty-state">
+        <i class="fa-solid fa-truck-fast"></i>Masukkan Nomor DO atau NIM untuk melihat status pengiriman.
+    </div>
+</section>

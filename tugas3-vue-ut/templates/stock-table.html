@@ -1,0 +1,203 @@
+<!-- CATATAN : TEMPLATE HALAMAN STOK
+     1. Bagian atas berisi ringkasan dan kontrol filter/sort.
+     2. Form Tambah mengikat input ke newItem menggunakan v-model.
+     3. Form Edit muncul hanya saat editItemData tersedia (v-if).
+     4. Pilihan gambar mengubah path sampul dan pratinjau memakai :src.
+     5. Tabel menggunakan v-for untuk menampilkan setiap bahan ajar.
+     6. Tombol Edit/Hapus menjalankan method melalui @click.
+-->
+<section class="space-y-5">
+    <div class="section-card card-pad">
+        <div class="flex flex-wrap items-start justify-between gap-3 mb-5">
+            <div>
+                <h2 class="section-title"><i class="fa-solid fa-filter"></i>Filter dan Pengurutan Stok</h2>
+                <p class="section-subtitle">Pilih UT-Daerah terlebih dahulu untuk mengaktifkan filter kategori mata kuliah.</p>
+            </div>
+            <span class="count-chip" v-text="filteredData.length + ' data ditampilkan'"></span>
+        </div>
+
+        <div class="filter-grid">
+            <div class="field">
+                <label for="filter-upbjj">UT-Daerah</label>
+                <select id="filter-upbjj" class="form-control" v-model="selectedUpbjj">
+                    <option value="">Semua UT-Daerah</option>
+                    <option v-for="lokasi in upbjjList" :key="lokasi" :value="lokasi">{{ lokasi }}</option>
+                </select>
+            </div>
+
+            <div class="field" v-if="selectedUpbjj">
+                <label for="filter-kategori">Kategori Mata Kuliah</label>
+                <select id="filter-kategori" class="form-control" v-model="selectedKategori">
+                    <option value="">Semua Kategori</option>
+                    <option v-for="kategori in kategoriListFiltered" :key="kategori" :value="kategori">{{ kategori }}</option>
+                </select>
+            </div>
+            <div class="field" v-else>
+                <label>Kategori Mata Kuliah</label>
+                <select class="form-control" disabled><option>Pilih UT-Daerah dahulu</option></select>
+            </div>
+
+            <div class="field">
+                <label for="filter-kondisi">Kondisi Stok</label>
+                <select id="filter-kondisi" class="form-control" v-model="stockCondition">
+                    <option value="semua">Semua kondisi</option>
+                    <option value="reorder">Di bawah safety stock</option>
+                    <option value="kosong">Stok kosong (0)</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="sort-stok">Urutkan berdasarkan</label>
+                <select id="sort-stok" class="form-control" v-model="sortBy">
+                    <option value="">Urutan awal</option>
+                    <option value="judul">Judul A–Z</option>
+                    <option value="qty">Jumlah stok</option>
+                    <option value="harga">Harga</option>
+                </select>
+            </div>
+
+            <div class="action-row">
+                <button type="button" class="btn btn-gray" @click="resetFilter"><i class="fa-solid fa-rotate-left"></i>Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-card form-card">
+        <div class="form-card-header">
+            <h2 class="section-title"><i class="fa-solid fa-circle-plus"></i>Tambah Bahan Ajar Baru</h2>
+            <p class="section-subtitle">Lengkapi data berikut. Tekan Enter pada formulir untuk menyimpan.</p>
+        </div>
+        <div class="form-card-body">
+            <form @submit.prevent="addItem" @keydown.enter="submitWithEnter" class="space-y-4">
+                <div class="form-grid">
+                    <div class="field"><label for="new-kode">Kode Mata Kuliah</label><input id="new-kode" class="form-control" v-model.trim="newItem.kode" maxlength="20" placeholder="Contoh: EKMA4117" required></div>
+                    <div class="field"><label for="new-judul">Judul Mata Kuliah</label><input id="new-judul" class="form-control" v-model.trim="newItem.judul" placeholder="Nama mata kuliah" required></div>
+                    <div class="field"><label for="new-kategori">Kategori</label><select id="new-kategori" class="form-control" v-model="newItem.kategori" required><option value="">Pilih kategori</option><option v-for="kategori in kategoriList" :key="kategori" :value="kategori">{{ kategori }}</option></select></div>
+                    <div class="field"><label for="new-upbjj">UT-Daerah</label><select id="new-upbjj" class="form-control" v-model="newItem.upbjj" required><option value="">Pilih UT-Daerah</option><option v-for="lokasi in upbjjList" :key="lokasi" :value="lokasi">{{ lokasi }}</option></select></div>
+                </div>
+                <div class="form-grid five">
+                    <div class="field"><label for="new-rak">Lokasi Rak</label><input id="new-rak" class="form-control" v-model.trim="newItem.lokasiRak" placeholder="R1-A5" required></div>
+                    <div class="field"><label for="new-harga">Harga (Rp)</label><input id="new-harga" class="form-control" v-model.number="newItem.harga" type="number" min="0" step="1000" required></div>
+                    <div class="field"><label for="new-qty">Jumlah Stok (buah)</label><input id="new-qty" class="form-control" v-model.number="newItem.qty" type="number" min="0" step="1" required></div>
+                    <div class="field"><label for="new-safety">Safety Stock (buah)</label><input id="new-safety" class="form-control" v-model.number="newItem.safety" type="number" min="0" step="1" required></div>
+                    <div class="field justify-end"><label>&nbsp;</label><button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i>Simpan Stok</button></div>
+                </div>
+                <div class="cover-editor-grid">
+                    <div class="field">
+                        <label for="new-gambar">Sampul Bahan Ajar</label>
+                        <select id="new-gambar" class="form-control" v-model="newItem.gambar">
+                            <option value="">Tanpa gambar sampul</option>
+                            <option v-for="cover in coverItems" :key="cover.image" :value="cover.image">{{ cover.title }}</option>
+                        </select>
+                        <p class="hint">Sampul empat mata kuliah awal sudah disesuaikan dengan nama stok pada JSON. Sampul Pengantar Ilmu Komunikasi tersedia sebagai pilihan tambahan.</p>
+                    </div>
+                    <div class="cover-preview" v-if="newItem.gambar">
+                        <img :src="newItem.gambar" alt="Pratinjau sampul bahan ajar baru">
+                    </div>
+                    <div class="cover-preview-empty" v-else>Pratinjau sampul akan tampil di sini</div>
+                </div>
+                <div class="field"><label for="new-catatan">Catatan</label><textarea id="new-catatan" class="form-control" v-model.trim="newItem.catatanHTML" placeholder="Catatan tambahan (opsional)"></textarea></div>
+                <p v-if="formError" class="error-text">{{ formError }}</p>
+            </form>
+        </div>
+    </div>
+
+    <div v-if="editItemData" class="section-card form-card">
+        <div class="form-card-header flex flex-wrap justify-between items-center gap-2">
+            <div>
+                <h2 class="section-title"><i class="fa-solid fa-pen-to-square"></i>Edit Bahan Ajar</h2>
+                <p class="section-subtitle">Perubahan disimpan ketika formulir dikirim atau tombol Enter ditekan.</p>
+            </div>
+            <span class="count-chip">{{ editItemData.kode }}</span>
+        </div>
+        <div class="form-card-body">
+            <form @submit.prevent="saveEdit" @keydown.enter="submitEditWithEnter" class="space-y-4">
+                <div class="form-grid">
+                    <div class="field"><label>Kode</label><input class="form-control" :value="editItemData.kode" readonly></div>
+                    <div class="field"><label>Judul</label><input class="form-control" v-model.trim="editItemData.judul" required></div>
+                    <div class="field"><label>Kategori</label><select class="form-control" v-model="editItemData.kategori" required><option v-for="kategori in kategoriList" :key="kategori" :value="kategori">{{ kategori }}</option></select></div>
+                    <div class="field"><label>UT-Daerah</label><select class="form-control" v-model="editItemData.upbjj" required><option v-for="lokasi in upbjjList" :key="lokasi" :value="lokasi">{{ lokasi }}</option></select></div>
+                </div>
+                <div class="form-grid five">
+                    <div class="field"><label>Lokasi Rak</label><input class="form-control" v-model.trim="editItemData.lokasiRak" required></div>
+                    <div class="field"><label>Harga (Rp)</label><input class="form-control" v-model.number="editItemData.harga" type="number" min="0" required></div>
+                    <div class="field"><label>Jumlah Stok (buah)</label><input class="form-control" v-model.number="editItemData.qty" type="number" min="0" required></div>
+                    <div class="field"><label>Safety Stock (buah)</label><input class="form-control" v-model.number="editItemData.safety" type="number" min="0" required></div>
+                    <div class="field"><label>&nbsp;</label><div class="action-row"><button type="submit" class="btn btn-navy">Update</button><button type="button" class="btn btn-light" @click="cancelEdit">Batal</button></div></div>
+                </div>
+                <div class="cover-editor-grid">
+                    <div class="field">
+                        <label for="edit-gambar">Sampul Bahan Ajar</label>
+                        <select id="edit-gambar" class="form-control" v-model="editItemData.gambar">
+                            <option value="">Tanpa gambar sampul</option>
+                            <option v-for="cover in coverItems" :key="cover.image" :value="cover.image">{{ cover.title }}</option>
+                        </select>
+                        <p class="hint">Sampul awal sudah mengikuti judul mata kuliah pada JSON. Kamu dapat menggantinya melalui pilihan ini.</p>
+                    </div>
+                    <div class="cover-preview" v-if="editItemData.gambar">
+                        <img :src="editItemData.gambar" alt="Pratinjau sampul bahan ajar yang diedit">
+                    </div>
+                    <div class="cover-preview-empty" v-else>Belum ada sampul dipilih</div>
+                </div>
+                <div class="field"><label>Catatan</label><textarea class="form-control" v-model.trim="editItemData.catatanHTML"></textarea></div>
+                <p v-if="editError" class="error-text">{{ editError }}</p>
+            </form>
+        </div>
+    </div>
+
+    <div class="section-card">
+        <div class="section-heading">
+            <div>
+                <h2 class="section-title"><i class="fa-solid fa-layer-group"></i>Daftar Stok Bahan Ajar</h2>
+                <p class="section-subtitle">Status stok: Aman, Menipis, atau Kosong. Arahkan kursor ke status untuk melihat catatan.</p>
+            </div>
+            <span class="count-chip">{{ filteredData.length }} dari {{ stok.length }} bahan ajar</span>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Sampul</th>
+                        <th>Kode / Judul Mata Kuliah</th>
+                        <th>Kategori</th>
+                        <th>UT-Daerah</th>
+                        <th>Lokasi Rak</th>
+                        <th>Harga</th>
+                        <th>Jumlah Stok</th>
+                        <th>Safety Stock</th>
+                        <th>Status</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="item in filteredData" :key="item.kode">
+                        <td>
+                            <img v-if="item.gambar" class="table-cover-image" :src="item.gambar" :alt="'Sampul ' + item.judul" loading="lazy">
+                            <span v-else class="table-cover-placeholder">Belum dipilih</span>
+                        </td>
+                        <td><div class="table-main">{{ item.kode }}</div><div class="table-sub">{{ item.judul }}</div></td>
+                        <td>{{ item.kategori }}</td>
+                        <td>{{ item.upbjj }}</td>
+                        <td>{{ item.lokasiRak }}</td>
+                        <td class="font-bold">{{ formatRupiah(item.harga) }}</td>
+                        <td>{{ item.qty }} buah</td>
+                        <td>{{ item.safety }} buah</td>
+                        <td><status-badge :item="item"></status-badge></td>
+                        <td><div class="action-row"><button type="button" class="btn btn-navy btn-small" @click="openEdit(item)" title="Edit data"><i class="fa-solid fa-pen"></i></button><button type="button" class="btn btn-danger btn-small" @click="askDelete(item)" title="Hapus data"><i class="fa-solid fa-trash"></i></button></div></td>
+                    </tr>
+                    <tr v-if="filteredData.length === 0">
+                        <td colspan="10"><div class="empty-state"><i class="fa-regular fa-folder-open"></i>Tidak ada data yang sesuai dengan filter.</div></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <app-modal
+        :show="showDeleteModal"
+        title="Hapus bahan ajar?"
+        :message="deleteMessage"
+        @cancel="showDeleteModal = false"
+        @confirm="confirmDelete">
+    </app-modal>
+</section>
